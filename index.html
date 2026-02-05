@@ -3,238 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Suprimentos - Igreja</title>
+    <title>Gestão Realtime - Igreja</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-
-        /* Camada da Foto de Fundo */
-        .bg-igreja {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('igreja.jpg'); /* Verifique se o nome do arquivo está correto */
-            background-size: cover;
-            background-position: center;
-            z-index: -2;
-        }
-
-        /* Efeito de Vidro Fosco (Overlay) */
-        .bg-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            backdrop-filter: blur(12px) brightness(0.7);
-            background: rgba(15, 23, 42, 0.3); /* Um tom escuro sutil */
-            z-index: -1;
-        }
-
-        /* Ajuste para não esconder conteúdo atrás da nav */
+        .bg-igreja { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('Igreja.jpg'); background-size: cover; background-position: center; z-index: -2; }
+        .bg-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; backdrop-filter: blur(12px) brightness(0.7); background: rgba(15, 23, 42, 0.4); z-index: -1; }
         main { position: relative; z-index: 1; }
     </style>
 </head>
 <body class="min-h-screen text-slate-800">
-
     <div class="bg-igreja"></div>
     <div class="bg-overlay"></div>
 
     <nav class="bg-blue-950/80 backdrop-blur-md text-white p-4 shadow-lg mb-8 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold flex items-center gap-2">
-                <span>🧼</span> 
-            </h1>
-            <div id="badge-alerta" class="hidden bg-orange-500 text-xs font-bold px-3 py-1 rounded-full animate-bounce shadow-lg">
-                ESTOQUE BAIXO
-            </div>
+            <h1 class="text-xl font-bold flex items-center gap-2"><span>🧼</span> Estoque Conectado</h1>
+            <div id="status-conexao" class="text-[10px] bg-green-500/20 text-green-400 border border-green-500/50 px-2 py-1 rounded">Sincronizado Online</div>
         </div>
     </nav>
 
-    <main class="max-w-4xl mx-auto px-4">
-        
-        <div class="bg-white/70 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 p-6 mb-8">
-            <h2 class="text-sm font-semibold text-slate-600 uppercase tracking-wider mb-4">Novo Item</h2>
+    <main class="max-w-4xl mx-auto px-4 pb-12">
+        <div class="bg-white/70 backdrop-blur-xl rounded-xl shadow-xl p-6 mb-8 border border-white/20">
             <div class="flex flex-col md:flex-row gap-4">
-                <input type="text" id="nome" placeholder="Nome do produto (ex: Desinfetante)" 
-                    class="flex-1 bg-white/50 border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                <input type="number" id="qtd" placeholder="Qtd" 
-                    class="w-full md:w-24 bg-white/50 border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                <button onclick="adicionarProduto()" 
-                    class="bg-blue-950 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md">
-                    <span>+</span> Adicionar
-                </button>
+                <input type="text" id="nome" placeholder="Nome do produto" class="flex-1 bg-white/50 border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="number" id="qtd" placeholder="Qtd" class="w-full md:w-24 bg-white/50 border border-slate-300 rounded-lg px-4 py-2 outline-none">
+                <button onclick="adicionarProduto()" class="bg-blue-950 hover:bg-blue-800 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all">+ Adicionar</button>
             </div>
         </div>
 
-        <div class="bg-white/70 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 overflow-hidden">
-    <div class="p-6 border-b border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div>
-            <h2 class="text-lg font-bold text-slate-800">Inventário Atual</h2>
-            <span id="contador-itens" class="text-sm text-slate-600 font-medium">0 itens cadastrados</span>
+        <div class="bg-white/70 backdrop-blur-xl rounded-xl shadow-xl overflow-hidden border border-white/20">
+            <table class="w-full text-left">
+                <thead class="bg-slate-800/5 text-slate-600 text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-4">Produto</th>
+                        <th class="px-6 py-4 text-center">Qtd</th>
+                        <th class="px-6 py-4 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-produtos" class="divide-y divide-slate-200/50">
+                    <tr><td colspan="3" class="px-6 py-8 text-center text-slate-500">Carregando estoque...</td></tr>
+                </tbody>
+            </table>
         </div>
-        
-        <div class="w-full md:w-64 relative">
-            <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
-            <input type="text" id="busca" onkeyup="filtrarProdutos()" placeholder="Buscar produto..." 
-                class="w-full bg-white/50 border border-slate-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all">
-        </div>
-    </div>
-    
-    <div class="overflow-x-auto">
-
-                <table class="w-full text-left">
-                    <thead class="bg-slate-800/5 text-slate-600 text-xs uppercase">
-                        <tr>
-                            <th class="px-6 py-4 font-semibold">Produto</th>
-                            <th class="px-6 py-4 font-semibold text-center">Quantidade</th>
-                            <th class="px-6 py-4 font-semibold text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="lista-produtos" class="divide-y divide-slate-200/50">
-                        </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="mt-8 text-center pb-12">
-            <button onclick="window.print()" class="bg-white/20 hover:bg-white/40 text-slate-100 hover:text-white px-4 py-2 rounded-full backdrop-blur-sm text-sm transition-all flex items-center justify-center gap-2 mx-auto">
-                🖨️ Imprimir relatório de estoque
-            </button>
-            <button onclick="fazerBackup()" class="bg-white/20 hover:bg-white/40 text-slate-100 px-4 py-2 rounded-full backdrop-blur-sm text-sm transition-all flex items-center gap-2">
-        💾 Fazer Backup (Exportar)
-            </button>
-        </div>
-
     </main>
 
     <script>
-        let produtos = JSON.parse(localStorage.getItem('estoque_igreja')) || [];
+        // CONFIGURAÇÃO DO BANCO (COLOQUE SEUS DADOS AQUI)
+        const URL_BANCO = "https://fqsshyrxknqimuqigtjh.supabase.co"; 
+        const KEY_BANCO = "sb_publishable_At-TjFOHetbp4ycNnaiaWQ_wV56Rmc0";
+        
+        const _supabase = supabase.createClient(URL_BANCO, KEY_BANCO);
 
-    function salvar() {
-        localStorage.setItem('estoque_igreja', JSON.stringify(produtos));
-        renderizar();
-    }
+        let produtos = [];
 
-    // --- FUNÇÃO DE BACKUP ---
-    function fazerBackup() {
-        if (produtos.length === 0) {
-            alert("Não há itens para exportar.");
-            return;
+        // BUSCAR DADOS DO BANCO
+        async function carregarDados() {
+            const { data, error } = await _supabase.from('estoque').select('*').order('nome');
+            if (error) console.error("Erro:", error);
+            else { produtos = data; renderizar(); }
         }
-        
-        const data = new Date().toLocaleDateString().replace(/\//g, '-');
-        const nomeArquivo = `backup_estoque_igreja_${data}.json`;
-        const conteudo = JSON.stringify(produtos, null, 2);
-        
-        const blob = new Blob([conteudo], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        link.href = url;
-        link.download = nomeArquivo;
-        link.click();
-        
-        URL.revokeObjectURL(url);
-    }
 
-    function adicionarProduto() {
-        const nomeInput = document.getElementById('nome');
-        const qtdInput = document.getElementById('qtd');
-        const nome = nomeInput.value.trim();
-        const qtd = parseInt(qtdInput.value);
-
-        if(nome && !isNaN(qtd)) {
-            produtos.push({ id: Date.now(), nome, qtd });
-            nomeInput.value = '';
-            qtdInput.value = '';
-            salvar();
-        }
-    }
-
-    // --- FUNÇÃO COM CONFIRMAÇÃO ---
-    function alterarQtd(id, valor) {
-        const p = produtos.find(item => item.id === id);
-        if (!p) return;
-
-        const acao = valor > 0 ? "ADICIONAR" : "RETIRAR";
-        const confirmacao = confirm(`Deseja realmente ${acao} 1 unidade de: ${p.nome}?`);
-
-        if (confirmacao) {
-            if (p && (p.qtd + valor) >= 0) {
-                p.qtd += valor;
-                salvar();
-            } else {
-                alert("A quantidade não pode ser menor que zero!");
+        // ADICIONAR NO BANCO
+        async function adicionarProduto() {
+            const n = document.getElementById('nome');
+            const q = document.getElementById('qtd');
+            if (n.value && q.value) {
+                const { error } = await _supabase.from('estoque').insert([{ nome: n.value, qtd: parseInt(q.value) }]);
+                if (!error) { n.value = ''; q.value = ''; carregarDados(); }
             }
         }
-    }
 
-    function remover(id) {
-        if(confirm('ATENÇÃO: Deseja remover este produto permanentemente do sistema?')) {
-            produtos = produtos.filter(p => p.id !== id);
-            salvar();
+        // ALTERAR QUANTIDADE NO BANCO
+        async function alterarQtd(id, novaQtd, nome) {
+            if (novaQtd < 0) return;
+            const { error } = await _supabase.from('estoque').update({ qtd: novaQtd }).eq('id', id);
+            if (!error) carregarDados();
         }
-    }
 
-    function renderizar() {
-        const lista = document.getElementById('lista-produtos');
-        const alerta = document.getElementById('badge-alerta');
-        const contador = document.getElementById('contador-itens');
-        
-        lista.innerHTML = '';
-        let temAlerta = false;
-        contador.innerText = `${produtos.length} itens cadastrados`;
-
-        produtos.forEach(p => {
-            const estoqueBaixo = p.qtd <= 2;
-            if(estoqueBaixo) temAlerta = true;
-
-            lista.innerHTML += `
-                <tr class="hover:bg-white/30 transition-colors">
-                    <td class="px-6 py-4">
-                        <div class="font-semibold text-slate-800">${p.nome}</div>
-                        ${estoqueBaixo ? '<span class="text-[10px] text-orange-600 font-bold uppercase tracking-tighter bg-orange-100 px-1 rounded">Reposição Necessária</span>' : ''}
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="inline-block w-12 text-lg font-mono font-bold ${estoqueBaixo ? 'text-red-600' : 'text-slate-800'}">${p.qtd}</span>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <div class="flex justify-end gap-2">
-                            <button onclick="alterarQtd(${p.id}, 1)" class="w-8 h-8 rounded-full bg-white/50 border border-slate-300 flex items-center justify-center hover:bg-green-500 hover:text-white hover:border-green-500 transition-all font-bold" title="Adicionar">+</button>
-                            <button onclick="alterarQtd(${p.id}, -1)" class="w-8 h-8 rounded-full bg-white/50 border border-slate-300 flex items-center justify-center hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all font-bold" title="Retirar">-</button>
-                            <button onclick="remover(${p.id})" class="ml-4 text-slate-400 hover:text-red-600 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-        alerta.classList.toggle('hidden', !temAlerta);
-        if (typeof filtrarProdutos === "function") filtrarProdutos(); 
-    }
-
-    function filtrarProdutos() {
-        const buscaInput = document.getElementById('busca');
-        if (!buscaInput) return;
-        const termo = buscaInput.value.toLowerCase();
-        const lista = document.getElementById('lista-produtos');
-        const linhas = lista.getElementsByTagName('tr');
-
-        for (let i = 0; i < linhas.length; i++) {
-            const nomeProduto = linhas[i].getElementsByTagName('td')[0].innerText.toLowerCase();
-            linhas[i].style.display = nomeProduto.includes(termo) ? "" : "none";
+        // REMOVER DO BANCO
+        async function remover(id) {
+            if (confirm("Deseja excluir permanentemente?")) {
+                const { error } = await _supabase.from('estoque').delete().eq('id', id);
+                if (!error) carregarDados();
+            }
         }
-    }
 
-    renderizar();
+        function renderizar() {
+            const lista = document.getElementById('lista-produtos');
+            lista.innerHTML = '';
+            produtos.forEach(p => {
+                lista.innerHTML += `
+                    <tr class="hover:bg-white/30 transition-colors">
+                        <td class="px-6 py-4 font-semibold text-slate-800">${p.nome}</td>
+                        <td class="px-6 py-4 text-center font-mono font-bold text-lg">${p.qtd}</td>
+                        <td class="px-6 py-4 text-right flex justify-end gap-2">
+                            <button onclick="alterarQtd(${p.id}, ${p.qtd + 1}, '${p.nome}')" class="w-8 h-8 rounded-full bg-white/50 border border-slate-300 hover:bg-green-500 hover:text-white transition-all">+</button>
+                            <button onclick="alterarQtd(${p.id}, ${p.qtd - 1}, '${p.nome}')" class="w-8 h-8 rounded-full bg-white/50 border border-slate-300 hover:bg-orange-500 hover:text-white transition-all">-</button>
+                            <button onclick="remover(${p.id})" class="ml-2 text-slate-400 hover:text-red-600">🗑️</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        // ATUALIZAÇÃO EM TEMPO REAL (O SEGREDO!)
+        _supabase.channel('custom-all-channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => {
+                carregarDados();
+            }).subscribe();
+
+        carregarDados();
     </script>
 </body>
-
 </html>
